@@ -1,0 +1,327 @@
+{% extends "layout.html" %}
+
+{% block title %}AI Weakness Quiz - StudyVerse{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Knowledge Check</h1>
+    <p style="color: var(--text-secondary);">Target your weak spots and level up your proficiency.</p>
+</div>
+
+<div class="card" id="quiz-start-card"
+    style="text-align: center; padding: 40px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+    <div
+        style="width: 80px; height: 80px; background: rgba(59, 130, 246, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;">
+        <i class="fa-solid fa-brain" style="font-size: 2.5rem; color: #3b82f6;"></i>
+    </div>
+    <h2 style="margin-bottom: 16px; font-family: var(--font-heading);">Customize Your Challenge</h2>
+    <p style="color: var(--text-secondary); max-width: 500px; margin: 0 auto 32px; line-height: 1.6;">
+        Configure your AI quiz to target your needs.
+    </p>
+
+    <!-- Quiz Settings Form -->
+    <div style="max-width: 400px; margin: 0 auto 32px; text-align: left; display: grid; gap: 16px;">
+
+        <!-- Question Count -->
+        <div>
+            <label style="display: block; color: var(--text-secondary); margin-bottom: 8px; font-size: 0.9rem;">Number
+                of Questions</label>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                <button class="btn-select selected" onclick="selectOption(this, 'q-count', 5)">5</button>
+                <button class="btn-select" onclick="selectOption(this, 'q-count', 10)">10</button>
+                <button class="btn-select" onclick="selectOption(this, 'q-count', 15)">15</button>
+                <button class="btn-select" onclick="selectOption(this, 'q-count', 20)">20</button>
+            </div>
+        </div>
+
+        <!-- Difficulty -->
+        <div>
+            <label
+                style="display: block; color: var(--text-secondary); margin-bottom: 8px; font-size: 0.9rem;">Difficulty</label>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                <button class="btn-select" onclick="selectOption(this, 'difficulty', 'easy')">Easy</button>
+                <button class="btn-select selected" onclick="selectOption(this, 'difficulty', 'medium')">Medium</button>
+                <button class="btn-select" onclick="selectOption(this, 'difficulty', 'hard')">Hard</button>
+            </div>
+        </div>
+
+    </div>
+
+    <div style="display: flex; justify-content: center;">
+        <button id="start-quiz-btn" class="btn-primary"
+            style="padding: 12px 32px; font-size: 1.1rem; width: 100%; max-width: 300px;">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Start Quiz
+        </button>
+    </div>
+    <div id="loading-spinner" style="display: none; margin-top: 20px; color: var(--accent-blue);">
+        <i class="fa-solid fa-circle-notch fa-spin fa-2x"></i>
+        <p style="margin-top: 10px;">Constructing your challenge...</p>
+    </div>
+</div>
+
+<style>
+    .btn-select {
+        background: var(--bg-hover);
+        border: 1px solid var(--border);
+        color: var(--text-primary);
+        padding: 8px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-weight: 500;
+    }
+
+    .btn-select:hover {
+        background: var(--bg-card);
+        /* Slightly different on hover */
+        border-color: var(--text-secondary);
+    }
+
+    .btn-select.selected {
+        background: #3b82f6 !important;
+        /* Force Blue */
+        color: white !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+    }
+</style>
+
+<div id="quiz-container" style="display: none; max-width: 700px; margin: 0 auto;">
+    <!-- Question Card -->
+    <div class="card" style="border-top: 4px solid var(--accent-blue);">
+        <div
+            style="display: flex; justify-content: space-between; margin-bottom: 24px; color: var(--text-secondary); font-size: 0.9rem;">
+            <span id="question-topic-badge"
+                style="background: rgba(255,255,255,0.05); padding: 4px 12px; border-radius: 20px;">Topic</span>
+            <span>Question <span id="current-q-num">1</span> / <span id="total-q-num">5</span></span>
+        </div>
+
+        <h3 id="question-text" style="font-size: 1.3rem; margin-bottom: 32px; line-height: 1.4;">
+            Question goes here?
+        </h3>
+
+        <div id="options-container" style="display: flex; flex-direction: column; gap: 12px;">
+            <!-- Options injected via JS -->
+        </div>
+
+        <div id="feedback-area" style="margin-top: 24px; padding: 16px; border-radius: 8px; display: none;"></div>
+
+        <div style="margin-top: 32px; display: flex; justify-content: flex-end;">
+            <button id="next-question-btn" class="btn-primary" style="display: none;">Next Question <i
+                    class="fa-solid fa-arrow-right"></i></button>
+        </div>
+    </div>
+</div>
+
+<div id="quiz-results" style="display: none; text-align: center; max-width: 600px; margin: 0 auto;">
+    <div class="card">
+        <h2 style="font-family: var(--font-heading); margin-bottom: 24px;">Quiz Complete!</h2>
+
+        <div style="font-size: 4rem; font-weight: 700; color: var(--accent-green); margin-bottom: 8px;"
+            id="result-score">
+            80%
+        </div>
+        <p style="color: var(--text-secondary); margin-bottom: 32px;">Great job! Your proficiency has been updated.</p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px;">
+            <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 12px;">
+                <div style="font-size: 0.9rem; color: var(--text-secondary);">XP Earned</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #fbbf24;" id="xp-earned-display">+50 XP</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); padding: 16px; border-radius: 12px;">
+                <div style="font-size: 0.9rem; color: var(--text-secondary);">Correct Answers</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: white;" id="correct-count-display">4/5</div>
+            </div>
+        </div>
+
+        <button onclick="location.reload()" class="btn-secondary">Take Another Quiz</button>
+        <a href="/dashboard" class="btn-primary" style="margin-left: 12px;">Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentQuestions = [];
+    let currentIndex = 0;
+    let score = 0;
+    let userAnswers = [];
+
+    let selectedExample = {
+        count: 5,
+        difficulty: 'medium',
+        syllabus_id: null
+    };
+
+    // Check URL params for syllabus context
+    const urlParams = new URLSearchParams(window.location.search);
+    const sourceSyllabusId = urlParams.get('source_id') || urlParams.get('syllabus_id');
+    if (sourceSyllabusId) {
+        selectedExample.syllabus_id = parseInt(sourceSyllabusId);
+        console.log("Quiz Context Set: Syllabus ID", sourceSyllabusId);
+        // Optional: Update UI to show we are practicing a specific course?
+        // document.querySelector('h2').innerText += " (Specific Course)";
+    }
+
+    function selectOption(btn, type, value) {
+        // Update UI
+        const parent = btn.parentElement;
+        Array.from(parent.children).forEach(c => c.classList.remove('selected'));
+        btn.classList.add('selected');
+
+        // Update State
+        if (type === 'q-count') selectedExample.count = value;
+        if (type === 'difficulty') selectedExample.difficulty = value;
+    }
+
+    const startBtn = document.getElementById('start-quiz-btn');
+    const loading = document.getElementById('loading-spinner');
+    const startCard = document.getElementById('quiz-start-card');
+    const quizContainer = document.getElementById('quiz-container');
+    const questionText = document.getElementById('question-text');
+    const optionsContainer = document.getElementById('options-container');
+    const nextBtn = document.getElementById('next-question-btn');
+    const topicBadge = document.getElementById('question-topic-badge');
+    const feedbackArea = document.getElementById('feedback-area');
+    const resultsContainer = document.getElementById('quiz-results');
+
+    startBtn.addEventListener('click', async () => {
+        startBtn.style.display = 'none';
+        loading.style.display = 'block';
+
+        try {
+            const res = await fetch('/api/quiz/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    num_questions: selectedExample.count,
+                    difficulty: selectedExample.difficulty,
+                    syllabus_id: selectedExample.syllabus_id
+                })
+            });
+            const data = await res.json();
+
+            if (data.status === 'error') {
+                alert(data.message);
+                location.reload();
+                return;
+            }
+
+            currentQuestions = data.questions;
+            startCard.style.display = 'none';
+            quizContainer.style.display = 'block';
+            document.getElementById('total-q-num').innerText = currentQuestions.length;
+            loadQuestion(0);
+
+        } catch (e) {
+            alert("Failed to generate quiz. Please try again.");
+            location.reload();
+        }
+    });
+
+    function loadQuestion(index) {
+        currentIndex = index;
+        const q = currentQuestions[index];
+
+        document.getElementById('current-q-num').innerText = index + 1;
+        questionText.innerText = q.question;
+        topicBadge.innerText = q.topic || 'General';
+
+        optionsContainer.innerHTML = '';
+        feedbackArea.style.display = 'none';
+        nextBtn.style.display = 'none';
+
+        q.options.forEach((opt, i) => {
+            const btn = document.createElement('div');
+            btn.className = 'quiz-option';
+            btn.style.cssText = `
+                padding: 16px; 
+                background: rgba(255,255,255,0.05); 
+                border: 1px solid var(--border); 
+                border-radius: 8px; 
+                cursor: pointer; 
+                transition: all 0.2s;
+            `;
+            btn.innerHTML = `<span style="font-weight:600; margin-right:8px; opacity:0.5;">${String.fromCharCode(65 + i)}.</span> ${opt}`;
+
+            btn.addEventListener('click', () => handleAnswer(i, btn));
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function handleAnswer(selectedIndex, btnElement) {
+        // Prevent multiple clicks
+        if (nextBtn.style.display === 'inline-flex' || nextBtn.style.display === 'block') return;
+
+        const q = currentQuestions[currentIndex];
+        const isCorrect = selectedIndex === q.correct_index;
+
+        // Highlight logic
+        const allOptions = optionsContainer.children;
+        Array.from(allOptions)[q.correct_index].style.background = 'rgba(74, 222, 128, 0.2)';
+        Array.from(allOptions)[q.correct_index].style.borderColor = 'var(--accent-green)';
+
+        if (!isCorrect) {
+            btnElement.style.background = 'rgba(239, 68, 68, 0.2)';
+            btnElement.style.borderColor = 'var(--destructive)';
+        } else {
+            score++;
+            // Confetti for correct answer? Maybe too much.
+        }
+
+        userAnswers.push({
+            topic: q.topic,
+            correct: isCorrect
+        });
+
+        // Show feedback (optional)
+        // Show Next Button
+        nextBtn.style.display = 'inline-flex';
+    }
+
+    nextBtn.addEventListener('click', () => {
+        if (currentIndex < currentQuestions.length - 1) {
+            loadQuestion(currentIndex + 1);
+        } else {
+            finishQuiz();
+        }
+    });
+
+    async function finishQuiz() {
+        quizContainer.style.display = 'none';
+        loading.style.display = 'block'; // recycle spinner or use new one
+        startCard.style.display = 'none'; // Ensure hidden
+
+        // Send results to server
+        try {
+            const res = await fetch('/api/quiz/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ answers: userAnswers, total: currentQuestions.length })
+            });
+            const data = await res.json();
+
+            // Show results
+            loading.style.display = 'none';
+            resultsContainer.style.display = 'block';
+
+            const percent = Math.round((data.score / currentQuestions.length) * 100);
+            document.getElementById('result-score').innerText = percent + "%";
+            document.getElementById('xp-earned-display').innerText = "+" + data.xp_earned + " XP";
+            document.getElementById('correct-count-display').innerText = data.score + "/" + currentQuestions.length;
+
+            if (percent >= 80) window.triggerConfetti();
+
+        } catch (e) {
+            alert("Error submitting results.");
+            location.reload();
+        }
+    }
+</script>
+<style>
+    .quiz-option:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+        transform: translateX(4px);
+    }
+</style>
+{% endblock %}

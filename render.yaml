@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: studyverse
+    env: python
+    buildCommand: pip install --no-cache-dir -r requirements.txt
+    # Force use of eventlet for WebSocket support
+    startCommand: gunicorn --worker-class eventlet -w 1 --timeout 120 --bind 0.0.0.0:$PORT app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.4
+      - key: WEB_CONCURRENCY
+        value: 1
+
+
+
+

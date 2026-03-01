@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - StudyVerse</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: #111;
+            background-image: url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .login-logo {
+            font-size: 3rem;
+            color: var(--accent-green);
+            margin-bottom: 16px;
+        }
+
+        .login-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: white;
+        }
+
+        .login-subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+            font-size: 0.95rem;
+        }
+
+        .btn-google {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            background: white;
+            color: #1f2937;
+            padding: 12px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-google:hover {
+            background: #f9fafb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .divider {
+            margin: 24px 0;
+            display: flex;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .divider span {
+            padding: 0 10px;
+        }
+
+        /* Tab Overrides for Auth */
+        .auth-tabs {
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 4px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 8px;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-secondary);
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .auth-tab.active {
+            background: var(--accent-green);
+            color: black;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="overlay"></div>
+
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-logo">
+                <i class="fa-solid fa-graduation-cap"></i>
+            </div>
+            <h1 class="login-title">StudyVerse</h1>
+            <p class="login-subtitle">Your AI-Powered Study Companion</p>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div style="margin-bottom: 20px; text-align: left;">
+                {% for category, message in messages %}
+                <div
+                    style="padding: 10px; border-radius: 8px; background: rgba(239, 68, 68, 0.2); color: #fca5a5; font-size: 0.9rem; border: 1px solid rgba(239, 68, 68, 0.3);">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+
+            <div class="auth-tabs">
+                <button class="auth-tab {{ 'active' if not active_tab or active_tab == 'signin' else '' }}"
+                    id="tab-signin">Sign In</button>
+                <button class="auth-tab {{ 'active' if active_tab == 'signup' else '' }}" id="tab-signup">Sign
+                    Up</button>
+            </div>
+
+            <!-- Sign In Form -->
+            <form id="form-signin" method="POST" action="{{ url_for('signin') }}"
+                style="display: {{ 'none' if active_tab == 'signup' else 'flex' }}; flex-direction: column; gap: 16px;">
+                <input type="email" name="email" placeholder="Email address" required
+                    style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--border); padding: 12px; border-radius: 12px; color: white; outline: none;">
+                <div class="password-container">
+                    <input type="password" name="password" id="signin-password" placeholder="Password" required
+                        style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--border); padding: 12px; border-radius: 12px; color: white; outline: none;">
+                    <i class="fa-solid fa-eye-slash toggle-password" id="toggle-signin"></i>
+                </div>
+                <button type="submit" class="btn-primary"
+                    style="width: 100%; padding: 12px; background: var(--accent-green); color: black; font-weight: 600; border-radius: 12px;">Sign
+                    In</button>
+            </form>
+
+            <!-- Sign Up Form -->
+            <form id="form-signup" method="POST" action="{{ url_for('signup') }}"
+                style="display: {{ 'flex' if active_tab == 'signup' else 'none' }}; flex-direction: column; gap: 14px;"
+                onsubmit="return validateSignupForm()">
+
+                <!-- Validation Error Banner -->
+                <div id="signup_error_banner" style="display:none; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.5);
+                           border-radius:10px; padding:10px 14px; color:#fca5a5; font-size:0.85rem;
+                           text-align:left; line-height:1.5;">
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+                        <input type="text" name="first_name" id="first_name" placeholder="First Name"
+                            value="{{ form_data.get('first_name', '') if form_data else '' }}" required
+                            oninput="validateNameField(this, 'first_name_err')"
+                            style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--border); padding: 12px; border-radius: 12px; color: white; outline: none; box-sizing:border-box;">
+                        <span id="first_name_err"
+                            style="font-size:0.72rem; color:#f87171; display:none; text-align:left; padding-left:4px;"></span>
+                    </div>
+                    <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+                        <input type="text" name="last_name" id="last_name" placeholder="Last Name"
+                            value="{{ form_data.get('last_name', '') if form_data else '' }}" required
+                            oninput="validateNameField(this, 'last_name_err')"
+                            style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--border); padding: 12px; border-radius: 12px; color: white; outline: none; box-sizing:border-box;">
+                        <span id="last_name_err"
+                            style="font-size:0.72rem; color:#f87171; display:none; text-align:left; padding-left:4px;"></span>
+                    </div>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                    <input type="email" name="email" id="signup_email" placeholder="Email address"
+                        value="{{ form_data.get('email', '') if form_data else '' }}" required
+                        oninput="validateEmailField(this)"
+                        style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--border); padding: 12px; border-radius: 12px; color: white; outline: none; box-sizing:border-box;">
+                    <span id="email_err"
+                        style="font-size:0.72rem; color:#f87171; display:none; text-align:left; padding-left:4px;"></span>
+                </div>
+
+                <div class="password-container" style="display:flex; flex-direction:column; gap:4px;">
+                    <div style="position:relative;">
+                        <input type="password" name="password" id="signup-password" placeholder="Password" required
+                            oninput="updatePasswordStrength(this.value)"
+                            style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--border); padding: 12px; border-radius: 12px; color: white; outline: none; box-sizing:border-box;">
+                        <i class="fa-solid fa-eye-slash toggle-password" id="toggle-signup"></i>
+                    </div>
+                    <!-- Password strength bar -->
+                    <div id="pw_strength_bar"
+                        style="height:4px; border-radius:4px; background:#333; overflow:hidden; display:none;">
+                        <div id="pw_strength_fill"
+                            style="height:100%; width:0%; transition: width 0.3s, background 0.3s;"></div>
+                    </div>
+                    <span id="pw_strength_label"
+                        style="font-size:0.72rem; color:#9ca3af; text-align:left; padding-left:4px; display:none;"></span>
+                    <!-- Password requirements checklist -->
+                    <div id="pw_requirements"
+                        style="font-size:0.72rem; text-align:left; padding-left:4px; display:none; line-height:1.8;">
+                        <div id="req_len" style="color:#6b7280;"><i class="fa fa-circle"
+                                style="font-size:0.5rem; margin-right:5px;"></i>At least 8 characters</div>
+                        <div id="req_upper" style="color:#6b7280;"><i class="fa fa-circle"
+                                style="font-size:0.5rem; margin-right:5px;"></i>One uppercase letter</div>
+                        <div id="req_num" style="color:#6b7280;"><i class="fa fa-circle"
+                                style="font-size:0.5rem; margin-right:5px;"></i>One number</div>
+                        <div id="req_special" style="color:#6b7280;"><i class="fa fa-circle"
+                                style="font-size:0.5rem; margin-right:5px;"></i>One special character (!@#$%^&amp;*)
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary"
+                    style="width: 100%; padding: 12px; background: var(--accent-green); color: black; font-weight: 600; border-radius: 12px; margin-top: 4px;">Create
+                    Account</button>
+            </form>
+
+            <div class="divider">
+                <span>OR</span>
+            </div>
+
+            <a href="{{ url_for('login_google') }}" class="btn-google" style="text-decoration: none;">
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google"
+                    style="width: 20px; height: 20px;">
+                Continue with Google
+            </a>
+        </div>
+    </div>
+
+    <style>
+        .password-container {
+            position: relative;
+            width: 100%;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+    </style>
+
+    <script>
+        const tabSignin = document.getElementById('tab-signin');
+        const tabSignup = document.getElementById('tab-signup');
+        const formSignin = document.getElementById('form-signin');
+        const formSignup = document.getElementById('form-signup');
+
+        tabSignin.addEventListener('click', () => {
+            tabSignin.classList.add('active');
+            tabSignup.classList.remove('active');
+            formSignin.style.display = 'flex';
+            formSignup.style.display = 'none';
+        });
+
+        tabSignup.addEventListener('click', () => {
+            tabSignup.classList.add('active');
+            tabSignin.classList.remove('active');
+            formSignup.style.display = 'flex';
+            formSignin.style.display = 'none';
+        });
+
+        function setupPasswordToggle(inputId, toggleId) {
+            const input = document.getElementById(inputId);
+            const toggle = document.getElementById(toggleId);
+
+            toggle.addEventListener('click', () => {
+                const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+                input.setAttribute('type', type);
+                toggle.classList.toggle('fa-eye');
+                toggle.classList.toggle('fa-eye-slash');
+            });
+        }
+
+        setupPasswordToggle('signin-password', 'toggle-signin');
+        setupPasswordToggle('signup-password', 'toggle-signup');
+
+        // ── Real-time name validation ─────────────────────────────────────────
+        const BAD_WORDS = [
+            'fuck', 'shit', 'bitch', 'asshole', 'bastard', 'cunt', 'dick', 'pussy',
+            'cock', 'whore', 'slut', 'nigger', 'nigga', 'faggot', 'retard', 'idiot',
+            'stupid', 'moron', 'dumbass', 'jackass', 'prick', 'wanker', 'twat',
+            'rape', 'rapist', 'pedo', 'porn', 'nude', 'boob', 'tits', 'ass', 'arse',
+            'anal', 'dildo', 'jerk', 'loser', 'gay', 'homo', 'tranny', 'spic',
+        ];
+
+        function containsBadWord(text) {
+            const clean = text.toLowerCase();
+            return BAD_WORDS.some(w => clean.includes(w));
+        }
+
+        function validateNameField(input, errId) {
+            const err = document.getElementById(errId);
+            const val = input.value.trim();
+            let msg = '';
+
+            if (val.length > 0 && val.length < 2) {
+                msg = 'Must be at least 2 characters.';
+            } else if (val.length > 50) {
+                msg = 'Must be at most 50 characters.';
+            } else if (val && !/^[A-Za-z\s\-\']+$/.test(val)) {
+                msg = 'Only letters, spaces, hyphens and apostrophes allowed.';
+            } else if (containsBadWord(val)) {
+                msg = '⚠️ Inappropriate language detected. Use your real name.';
+            }
+
+            if (msg) {
+                err.textContent = msg;
+                err.style.display = 'block';
+                input.style.borderColor = '#f87171';
+            } else {
+                err.style.display = 'none';
+                input.style.borderColor = val.length >= 2 ? '#4ade80' : '';
+            }
+        }
+
+        // ── Real-time email validation ────────────────────────────────────────
+        const BLOCKED_DOMAINS = [
+            'mailinator.com', 'guerrillamail.com', 'tempmail.com', 'yopmail.com',
+            'trashmail.com', 'sharklasers.com', 'maildrop.cc', 'discard.email',
+            'throwaway.email', 'temp-mail.org', 'temp-mail.io', 'fakeinbox.com',
+            'spambox.us', 'tempr.email', 'tmpmail.net', 'spamgourmet.com',
+        ];
+
+        function validateEmailField(input) {
+            const err = document.getElementById('email_err');
+            const val = input.value.trim().toLowerCase();
+            let msg = '';
+
+            if (val.length > 0) {
+                const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+                if (!emailRegex.test(val)) {
+                    msg = 'Please enter a valid email format.';
+                } else {
+                    const domain = val.split('@')[1];
+                    if (BLOCKED_DOMAINS.includes(domain)) {
+                        msg = '🚫 Disposable emails are not allowed.';
+                    }
+                }
+            }
+
+            if (msg) {
+                err.textContent = msg;
+                err.style.display = 'block';
+                input.style.borderColor = '#f87171';
+            } else {
+                err.style.display = 'none';
+                input.style.borderColor = val.includes('@') ? '#4ade80' : '';
+            }
+        }
+
+        // ── Password strength indicator ────────────────────────────────────────
+        function updatePasswordStrength(val) {
+            const bar = document.getElementById('pw_strength_bar');
+            const fill = document.getElementById('pw_strength_fill');
+            const label = document.getElementById('pw_strength_label');
+            const reqs = document.getElementById('pw_requirements');
+
+            bar.style.display = val.length > 0 ? 'block' : 'none';
+            label.style.display = val.length > 0 ? 'block' : 'none';
+            reqs.style.display = val.length > 0 ? 'block' : 'none';
+
+            const checks = {
+                len: val.length >= 8,
+                upper: /[A-Z]/.test(val),
+                num: /[0-9]/.test(val),
+                special: /[!@#$%^&*(),.?":{}|<>]/.test(val),
+            };
+
+            setReq('req_len', checks.len);
+            setReq('req_upper', checks.upper);
+            setReq('req_num', checks.num);
+            setReq('req_special', checks.special);
+
+            const score = Object.values(checks).filter(Boolean).length;
+            const levels = [
+                { w: '0%', c: '#ef4444', t: '' },
+                { w: '25%', c: '#ef4444', t: '🔴 Very Weak' },
+                { w: '50%', c: '#f59e0b', t: '🟠 Weak' },
+                { w: '75%', c: '#3b82f6', t: '🔵 Good' },
+                { w: '100%', c: '#22c55e', t: '🟢 Strong' },
+            ];
+            const lvl = levels[score];
+            fill.style.width = lvl.w;
+            fill.style.background = lvl.c;
+            label.textContent = lvl.t;
+            label.style.color = lvl.c;
+        }
+
+        function setReq(id, met) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.style.color = met ? '#4ade80' : '#6b7280';
+            el.querySelector('i').className = met ? 'fa fa-check-circle' : 'fa fa-circle';
+            el.querySelector('i').style.fontSize = '0.5rem';
+        }
+
+        // ── Final client-side validation (hard block on submit) ────────────────────
+        const signupBanner = document.getElementById('signup_error_banner');
+
+        function showBannerError(msg) {
+            signupBanner.innerHTML = msg;
+            signupBanner.style.display = 'block';
+            signupBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        function clearBanner() {
+            signupBanner.style.display = 'none';
+            signupBanner.innerHTML = '';
+        }
+
+        function validateSignupForm() {
+            clearBanner();
+
+            const firstInput = document.getElementById('first_name');
+            const lastInput = document.getElementById('last_name');
+            const emailInput = document.getElementById('signup_email');
+            const pwInput = document.getElementById('signup-password');
+            const firstErr = document.getElementById('first_name_err');
+            const lastErr = document.getElementById('last_name_err');
+
+            const fn = firstInput.value.trim();
+            const ln = lastInput.value.trim();
+            const em = emailInput.value.trim();
+            const pw = pwInput.value;
+
+            // — All fields required
+            if (!fn) { showBannerError('❌ <strong>First name</strong> is required.'); firstInput.focus(); return false; }
+            if (!ln) { showBannerError('❌ <strong>Last name</strong> is required.'); lastInput.focus(); return false; }
+            if (!em) { showBannerError('❌ <strong>Email address</strong> is required.'); emailInput.focus(); return false; }
+            if (!pw) { showBannerError('❌ <strong>Password</strong> is required.'); pwInput.focus(); return false; }
+
+            // — Name length check
+            if (fn.length < 2) { showBannerError('❌ First name must be at least 2 characters.'); firstInput.focus(); return false; }
+            if (ln.length < 2) { showBannerError('❌ Last name must be at least 2 characters.'); lastInput.focus(); return false; }
+
+            // — Name format — letters only
+            if (!/^[A-Za-z\s\-\']+$/.test(fn)) {
+                firstInput.style.borderColor = '#f87171';
+                showBannerError('❌ Your <strong>first name</strong> contains numbers or invalid characters. Only letters, spaces, hyphens and apostrophes are allowed.');
+                firstInput.focus(); return false;
+            }
+            if (!/^[A-Za-z\s\-\']+$/.test(ln)) {
+                lastInput.style.borderColor = '#f87171';
+                showBannerError('❌ Your <strong>last name</strong> contains numbers or invalid characters. Only letters, spaces, hyphens and apostrophes are allowed.');
+                lastInput.focus(); return false;
+            }
+
+            // — Profanity / slang check
+            if (containsBadWord(fn) || containsBadWord(ln)) {
+                firstInput.style.borderColor = '#f87171';
+                lastInput.style.borderColor = '#f87171';
+                showBannerError('⚠️ <strong>Inappropriate name detected.</strong> Slang, bad words, and offensive terms are <strong>not allowed</strong> on StudyVerse. Please use your real name.');
+                return false;
+            }
+
+            // — Block if inline field errors are still visible
+            if (firstErr.style.display !== 'none' && firstErr.textContent) {
+                showBannerError('❌ ' + firstErr.textContent); return false;
+            }
+            if (lastErr.style.display !== 'none' && lastErr.textContent) {
+                showBannerError('❌ ' + lastErr.textContent); return false;
+            }
+
+            // — Email format
+            if (!/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(em)) {
+                emailInput.style.borderColor = '#f87171';
+                showBannerError('❌ Please enter a <strong>valid email address</strong>.');
+                emailInput.focus(); return false;
+            }
+
+            // — Disposable email
+            const dom = em.split('@')[1] || '';
+            if (BLOCKED_DOMAINS.includes(dom.toLowerCase())) {
+                emailInput.style.borderColor = '#f87171';
+                showBannerError('🚫 <strong>Disposable or temporary email addresses</strong> are not allowed. Please use your real email address.');
+                return false;
+            }
+
+            return true;
+        }
+    </script>
+</body>
+
+</html>

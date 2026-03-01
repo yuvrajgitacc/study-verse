@@ -1,0 +1,479 @@
+{% extends "layout.html" %}
+
+{% block title %}Group Chat - StudyVerse{% endblock %}
+
+{% block content %}
+<header class="friends-header">
+    <div class="friends-header-info">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <h1 class="page-title-friends">Friends &amp; Community</h1>
+            {% if group %}
+            <form action="{{ url_for('group_leave') }}" method="POST" style="margin: 0;">
+                <button type="submit" title="Leave Group"
+                    style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); padding: 5px 12px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 0.8rem; display: flex; align-items: center; gap: 6px;"
+                    onclick="return confirm('Are you sure you want to leave this group?');">
+                    <i class="fa-solid fa-right-from-bracket"></i> Leave Group
+                </button>
+            </form>
+            {% endif %}
+        </div>
+        <p class="friends-subtitle">Collaborate with your study squad in real-time.</p>
+    </div>
+
+    <div class="friends-actions">
+        <div class="mode-switcher-friends">
+            <a href="/friends" class="mode-btn-friends">Friends</a>
+            <a href="/group" class="mode-btn-friends active">Group</a>
+        </div>
+    </div>
+</header>
+
+{% if not group %}
+<!-- No Group State -->
+<div style="display: flex; justify-content: center; align-items: center; height: 60vh;">
+    <div class="card" style="width: 100%; max-width: 400px; text-align: center; padding: 40px;">
+        <div
+            style="width: 60px; height: 60px; background: rgba(59, 130, 246, 0.1); color: #3b82f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; font-size: 24px;">
+            <i class="fa-solid fa-users"></i>
+        </div>
+        <h2 style="font-size: 1.5rem; margin-bottom: 10px;">Join a Squad</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 30px;">Collaborate with friends, share tasks, and study
+            together.</p>
+
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            <form method="POST" action="{{ url_for('group_create') }}" style="display: flex; gap: 8px;">
+                <input class="input" type="text" name="name" placeholder="New Group Name" required
+                    style="flex: 1; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 8px; color: white;">
+                <button class="btn btn-primary" type="submit">Create</button>
+            </form>
+
+            <div
+                style="display: flex; align-items: center; gap: 10px; color: var(--text-secondary); font-size: 0.8rem;">
+                <div style="flex: 1; height: 1px; background: var(--border);"></div>
+                OR
+                <div style="flex: 1; height: 1px; background: var(--border);"></div>
+            </div>
+
+            <form method="POST" action="{{ url_for('group_join') }}" style="display: flex; gap: 8px;">
+                <input class="input" type="text" name="invite_code" placeholder="Invite Code" required
+                    style="flex: 1; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 8px; color: white;">
+                <button class="btn btn-secondary" type="submit">Join</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- Chat Layout -->
+<div class="chat-layout-main">
+
+    <!-- Left Panel: Members -->
+    <div class="card" style="display: flex; flex-direction: column; padding: 0;">
+        <div class="card-header"
+            style="padding: 20px; border-bottom: 1px solid var(--border); margin-bottom: 0; display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="card-title" style="font-size: 1.1rem; font-weight: 700; color: #fff; margin: 0;">Members
+                </div>
+                <div
+                    style="font-size: 0.75rem; color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05);">
+                    <i class="fa-solid fa-circle"
+                        style="color: var(--accent-green); font-size: 6px; vertical-align: middle; margin-right: 4px;"></i>
+                    {{ group_members|selectattr('is_online_status')|list|length }} Online
+                </div>
+            </div>
+
+            <div
+                style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px dashed var(--border);">
+                <span style="font-size: 0.85rem; color: var(--text-secondary);">Invite Code:</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span id="groupInviteCode"
+                        style="font-family: var(--font-mono); color: var(--accent-green); font-weight: 700; font-size: 1rem; letter-spacing: 1px;">{{
+                        group.invite_code }}</span>
+                    <button onclick="copyInviteCode('{{ group.invite_code }}')" title="Copy Invite Code"
+                        style="width: 28px; height: 28px; font-size: 0.86rem; background: rgba(74, 222, 128, 0.1); color: var(--accent-green); border: none !important; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; outline: none !important; box-shadow: none;">
+                        <i class="fa-solid fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search (Client-side filter) -->
+        <div style="padding: 16px;">
+            <input type="text" id="memberSearch" placeholder="Search members..."
+                style="width: 100%; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 8px; color: white;">
+        </div>
+
+        <!-- List -->
+        <div id="friendsList"
+            style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; padding: 0 16px 16px 16px;">
+            {% for u in group_members %}
+            <a href="{{ url_for('profile', user_id=u.id) }}" class="member-item"
+                style="display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; text-decoration: none; color: inherit;">
+                <img src="https://ui-avatars.com/api/?name={{ u.first_name }}+{{ u.last_name }}&background=random&length=1"
+                    style="width: 40px; height: 40px; border-radius: 50%;">
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; color: #fff;">{{ u.first_name }} {{ u.last_name }}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary);">Student</div>
+                </div>
+                <!-- Online Status -->
+                {% if u.is_online_status %}
+                <div style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 5px #22c55e;"
+                    title="Online"></div>
+                {% else %}
+                <div style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%;" title="Offline"></div>
+                {% endif %}
+            </a>
+            {% endfor %}
+        </div>
+
+
+    </div>
+
+    <!-- Right Panel: Chat -->
+    <div class="card" style="display: flex; flex-direction: column; padding: 0;">
+        <!-- Chat Header -->
+        <div
+            style="padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02);">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div
+                    style="width: 40px; height: 40px; background: linear-gradient(135deg, var(--mint), var(--purple)); border-radius: 12px; display: grid; place-items: center; font-weight: 700; font-size: 1.2rem;">
+                    {{ group.name[0] | upper }}
+                </div>
+                <div>
+                    <div style="font-weight: 700; font-size: 1.15rem; color: #fff;">{{ group.name }}</div>
+                    <div style="font-size: 0.8rem; color: var(--accent-green);">Active Now</div>
+                </div>
+            </div>
+
+            <!-- View Tabs -->
+            <div style="display: flex; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 8px;">
+                <button onclick="switchTab('chat')" id="tab-chat" class="btn-tab active"
+                    style="padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer; background: var(--accent-blue); color: white; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-message"></i> Chat
+                </button>
+                <button onclick="switchTab('whiteboard')" id="tab-whiteboard" class="btn-tab"
+                    style="padding: 6px 16px; border-radius: 6px; border: none; cursor: pointer; background: transparent; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-pen-to-square"></i> Board
+                </button>
+            </div>
+        </div>
+
+        <!-- Messages Area -->
+        <div id="groupMessagesContainer" class="messages-scroll-area">
+            {% if group_messages and group_messages|length > 0 %}
+            {% for m in group_messages %}
+            <div
+                style="display: flex; gap: 10px; align-self: {% if m.user_id == current_user.id %}flex-end{% else %}flex-start{% endif %}; max-width: 70%; {% if m.user_id == current_user.id %}flex-direction: row-reverse;{% endif %}">
+
+                {% if m.role == 'assistant' %}
+                <div
+                    style="width: 32px; height: 32px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 50%; display: grid; place-items: center; color: white; font-size: 0.8rem;">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                {% else %}
+                <img src="{{ m.user.get_avatar(64) if m.user else 'https://ui-avatars.com/api/?name=User&background=random' }}"
+                    style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+                {% endif %}
+
+                <div
+                    style="display: flex; flex-direction: column; gap: 4px; align-items: {% if m.user_id == current_user.id %}flex-end{% else %}flex-start{% endif %};">
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin: 0 4px;">
+                        {% if m.role == 'assistant' %}AI Coach{% elif m.user_id == current_user.id %}You{% else %}{{
+                        m.user.first_name if m.user else 'User' }}{% endif %}
+                        • <span data-timestamp="{{ m.created_at.isoformat() if m.created_at else '' }}">{{
+                            to_ist_time(m.created_at) if m.created_at else '' }}</span>
+                    </div>
+                    <div
+                        style="background: {% if m.user_id == current_user.id %}var(--accent-green){% elif m.role == 'assistant' %}rgba(59, 130, 246, 0.2){% else %}rgba(255,255,255,0.1){% endif %}; 
+                                            color: {% if m.user_id == current_user.id %}black{% else %}white{% endif %}; 
+                                            padding: 12px; 
+                                            border-radius: {% if m.user_id == current_user.id %}12px 0 12px 12px{% else %}0 12px 12px 12px{% endif %}; 
+                                            font-weight: 500; font-size: 0.95rem; border: 1px solid {% if m.role == 'assistant' %}rgba(59, 130, 246, 0.3){% else %}transparent{% endif %};">
+                        {{ m.content }}
+                        {% if m.file_path %}
+                        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.1);">
+                            <a href="{{ m.file_path }}" target="_blank"
+                                style="text-decoration: none; display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: inherit; font-weight: 600;">
+                                <i class="fa-solid fa-paperclip"></i> Attachment
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div style="text-align: center; color: var(--text-secondary); margin-top: 40px;">
+                <p>No messages yet. Start the conversation!</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Whiteboard Container (Hidden) -->
+        <div id="whiteboardContainer"
+            style="display: none; flex: 1; flex-direction: column; position: relative; background: #fff;">
+            <!-- Toolbar -->
+            <div
+                style="padding: 10px; background: #f0f0f0; border-bottom: 1px solid #ddd; display: flex; gap: 16px; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="color: #333; font-size: 0.8rem; font-weight: 600;">Color</label>
+                    <input type="color" id="wb-color" value="#000000"
+                        style="border: none; width: 30px; height: 30px; cursor: pointer;">
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="color: #333; font-size: 0.8rem; font-weight: 600;">Size</label>
+                    <input type="range" id="wb-size" min="1" max="20" value="2" class="slider" style="width: 100px;">
+                </div>
+                <div style="margin-left: auto; display: flex; gap: 8px;">
+                    <button id="wb-clear" class="btn-secondary"
+                        style="color: #333; border: 1px solid #ccc; padding: 4px 12px; font-size: 0.8rem;">
+                        <i class="fa-solid fa-eraser"></i> Clear
+                    </button>
+                    <button id="wb-save" class="btn-primary" style="padding: 4px 12px; font-size: 0.8rem;">
+                        <i class="fa-solid fa-download"></i> Save
+                    </button>
+                </div>
+            </div>
+            <!-- Canvas -->
+            <div style="flex: 1; position: relative; overflow: hidden; background: white; cursor: crosshair;">
+                <canvas id="whiteboard" style="width: 100%; height: 100%; display: block;"></canvas>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div id="input-area-wrapper"
+            style="padding: 16px; border-top: 1px solid var(--border); background: rgba(255,255,255,0.02);">
+            <!-- File Preview Area -->
+            <div id="filePreviewContainer"
+                style="display: none; margin-bottom: 12px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
+                    <div
+                        style="width: 32px; height: 32px; background: rgba(74, 222, 128, 0.2); color: var(--accent-green); border-radius: 6px; display: grid; place-items: center;">
+                        <i class="fa-solid fa-file"></i>
+                    </div>
+                    <span id="previewFileName"
+                        style="font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px;">filename.txt</span>
+                </div>
+                <button type="button" id="removeFileBtn" class="btn-icon"
+                    style="color: var(--text-secondary); width: 24px; height: 24px; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: color 0.2s;">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+
+            </div>
+
+            <form id="groupChatForm" style="display: flex; gap: 12px; align-items: center;">
+                <input type="file" id="fileInput" name="file" style="display: none;">
+                <button type="button" id="uploadBtn" class="btn btn-icon btn-secondary"
+                    style="width: 40px; height: 40px;">
+                    <i class="fa-solid fa-paperclip"></i>
+                </button>
+
+                <input type="text" id="groupChatInput" name="message" placeholder="Type a message..."
+                    style="flex: 1; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 8px; color: white; outline: none;">
+
+                <button id="groupSendButton" type="submit" class="btn btn-primary" style="width: 46px; height: 40px;">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<!-- Timestamp Utility -->
+<script src="{{ url_for('static', filename='js/timestamp_utils.js') }}"></script>
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+    // Copy Invite Code Function
+    function copyInviteCode(code) {
+        if (!code) return;
+
+        navigator.clipboard.writeText(code).then(() => {
+            // Show feedback
+            const btn = document.querySelector('button[onclick^="copyInviteCode"]');
+            const originalHTML = btn.innerHTML;
+            const originalBG = btn.style.background;
+
+            btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+            btn.style.background = 'rgba(74, 222, 128, 0.2)';
+
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.style.background = originalBG;
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            alert('Failed to copy code');
+        });
+    }
+
+    const GROUP_ID = "{{ group.id if group else '' }}";
+    const CURRENT_USER_ID = "{{ current_user.id }}";
+    const CURRENT_USER_NAME = "{{ current_user.first_name }} {{ current_user.last_name }}";
+    const CURRENT_USER_AVATAR = "{{ current_user.get_avatar(64) }}";
+    document.querySelector('[data-nav="group"]').classList.add('active');
+
+    // Simple member search
+    const searchInput = document.getElementById('memberSearch');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', (e) => {
+            const term = e.target.value.toLowerCase();
+            document.querySelectorAll('.member-item').forEach(item => {
+                const text = item.innerText.toLowerCase();
+                item.style.display = text.includes(term) ? 'flex' : 'none';
+            });
+        });
+    }
+</script>
+<script src="{{ url_for('static', filename='js/group_chat.js') }}"></script>
+<script src="{{ url_for('static', filename='js/whiteboard.js') }}"></script>
+<script>
+    function switchTab(tab) {
+        const chatContainer = document.getElementById('groupMessagesContainer');
+        const chatInput = document.getElementById('chatInputArea'); // Need to wrap input area
+        const wbContainer = document.getElementById('whiteboardContainer');
+
+        const btnChat = document.getElementById('tab-chat');
+        const btnWb = document.getElementById('tab-whiteboard');
+
+        if (tab === 'chat') {
+            chatContainer.style.display = 'flex';
+            // chatInput.style.display = 'block'; // Logic needs to check ID
+            // Simple toggle for now:
+            document.getElementById('input-area-wrapper').style.display = 'block';
+            wbContainer.style.display = 'none';
+
+            btnChat.classList.add('active');
+            btnWb.classList.remove('active');
+
+            btnChat.style.background = 'var(--accent-blue)';
+            btnChat.style.color = 'white';
+            btnWb.style.background = 'transparent';
+            btnWb.style.color = 'var(--text-secondary)';
+        } else {
+            chatContainer.style.display = 'none';
+            document.getElementById('input-area-wrapper').style.display = 'none';
+            wbContainer.style.display = 'flex';
+
+            btnChat.classList.remove('active');
+            btnWb.classList.add('active');
+
+            btnWb.style.background = 'var(--accent-blue)';
+            btnWb.style.color = 'white';
+            btnChat.style.background = 'transparent';
+            btnChat.style.color = 'var(--text-secondary)';
+
+            if (window.triggerWhiteboardResize) window.triggerWhiteboardResize();
+        }
+    }
+</script>
+<style>
+    /* Header & Layout */
+
+
+    .back-btn-squad {
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: #fff;
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        transition: all 0.2s;
+    }
+
+    .back-btn-squad:hover {
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateX(-3px);
+    }
+
+    .chat-layout-main {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 24px;
+        height: calc(100vh - 180px);
+        min-height: 500px;
+    }
+
+    /* Message Bubbles */
+    .messages-scroll-area {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 24px;
+    }
+
+    /* Scrollbar */
+    .messages-scroll-area::-webkit-scrollbar,
+    #friendsList::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .messages-scroll-area::-webkit-scrollbar-thumb,
+    #friendsList::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+    }
+
+    @media (max-width: 1024px) {
+        .chat-layout-main {
+            grid-template-columns: 250px 1fr;
+            gap: 16px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .friends-header {
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .mode-switcher-friends {
+            width: 100%;
+        }
+
+        .mode-btn-friends {
+            flex: 1;
+            text-align: center;
+        }
+
+        .chat-layout-main {
+            grid-template-columns: 1fr;
+            height: auto;
+            min-height: 80vh;
+        }
+
+        .chat-layout-main> :first-child {
+            /* Show members on mobile below chat */
+            order: 2;
+            max-height: 450px;
+            height: auto;
+        }
+
+        .chat-layout-main> :last-child {
+            order: 1;
+            height: 500px;
+            /* Fixed height for chat on mobile */
+        }
+
+        .messages-scroll-area {
+            padding: 15px;
+        }
+
+        .messages-scroll-area>div {
+            max-width: 90% !important;
+        }
+
+        .page-title-friends {
+            font-size: 1.75rem;
+        }
+    }
+</style>
+{% endblock %}
