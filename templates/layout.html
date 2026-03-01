@@ -1555,8 +1555,11 @@
                 function speak(txt) {
                     if (!synth) return;
 
-                    // Force reset
+                    // Force reset & STOP recognition while speaking to prevent self-triggering
                     synth.cancel();
+                    stopWake();
+                    if (cmdRec) { try { cmdRec.stop(); } catch(e){} }
+                    
                     if (window._novaHeartbeat) clearInterval(window._novaHeartbeat);
 
                     if (isMuted) {
@@ -1598,6 +1601,7 @@
                         isSpeaking = false;
                         setOrbState(null);
                         if (window._novaHeartbeat) clearInterval(window._novaHeartbeat);
+                        // Only restart recognition after speech is fully done
                         if (inConversation) setTimeout(startCommandMode, 300); else startWake();
                     };
 
@@ -1614,7 +1618,8 @@
                 }
 
                 function startWake() {
-                    if (!wakeRec || wakeOn || isSpeaking || inConversation) return;
+                    // Safety: Don't start wake if Nova is speaking
+                    if (!wakeRec || wakeOn || isSpeaking || inConversation || synth.speaking) return;
                     try {
                         wakeRec.lang = 'en-IN';
                         wakeRec.start();
@@ -1705,8 +1710,12 @@
                 sendBtn.addEventListener('click', () => { inConversation = false; handleSend(); });
                 micBtn.addEventListener('click', () => { inConversation = true; startCommandMode(); });
 
-                if (chatHistory.length === 0) appendMsg("Hello! I'm Nova. How can I help you today?", false);
-                else { chatHistory.forEach(m => appendMsg(m.content, m.role === 'user')); }
+                if (chatHistory.length === 0) {
+                    const greeting = "Hello! I'm Nova. How can I help you today?";
+                    appendMsg(greeting, false);
+                    // Use timeout to allow voices to load and ensure speech unlock
+                    setTimeout(() => speak(greeting), 1500);
+                } else { chatHistory.forEach(m => appendMsg(m.content, m.role === 'user')); }
 
                 // --- PENDING SPEECH FIX ---
                 const pending = sessionStorage.getItem('nova_pending_speech');
